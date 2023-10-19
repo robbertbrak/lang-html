@@ -16,6 +16,19 @@ export interface TagSpec {
   children?: readonly string[]
 }
 
+export interface SchemaConfig {
+  /// Define extra tag names to complete.
+  extraTags?: Record<string, TagSpec>,
+  /// Add global attributes that are available on all tags.
+  extraGlobalAttributes?: Record<string, null | readonly string[]>,
+  /// Define list of allowed tags, must be a subset of default tags + extraTags
+  allowedTags?: string[],
+  /// Define list of allowed attributes per tag, must be a subset of default attributes for that tag.
+  /// Include 'global' for list of allowed global attributes, must be a subset of default global attrs + extraGlobalAttributes
+  /// All aria-* attributes are always allowed
+  allowedAttributes?: Record<string, string[]>
+}
+
 const Targets = ["_blank", "_self", "_top", "_parent"]
 const Charsets = ["ascii", "utf-8", "utf-16", "latin1", "latin1"]
 const Methods = ["get", "post", "put", "delete"]
@@ -370,15 +383,42 @@ export class Schema {
   allTags: readonly string[]
   globalAttrNames: readonly string[]
 
-  constructor(extraTags?: Record<string, TagSpec>, extraAttrs?: Record<string, null | readonly string[]>) {
+  constructor(config: SchemaConfig) {
+    const { extraTags, extraGlobalAttributes, allowedTags, allowedAttributes } = config
     this.tags = {...Tags, ...extraTags}
-    this.globalAttrs = {...GlobalAttrs, ...extraAttrs}
+    this.globalAttrs = {...GlobalAttrs, ...extraGlobalAttributes}
+
+    if (allowedTags) {
+      this.tags = pick(this.tags, allowedTags);
+    }
+
+    if (allowedAttributes) {
+      for (let tag in allowedAttributes) {
+        let tagDefinition = this.tags[tag];
+        if (!tagDefinition || !tagDefinition.attrs) continue;
+
+        this.tags[tag] = {
+          ...tagDefinition,
+          attrs: pick(tagDefinition.attrs, allowedAttributes[tag])
+        }
+      }
+
+      if (allowedAttributes['global']) {
+        const ariaAttrs = Object.keys(this.globalAttrs).filter(key => key.startsWith("aria-"));
+        this.globalAttrs = pick(this.globalAttrs, allowedAttributes['global'].concat(ariaAttrs))
+      }
+    }
+
     this.allTags = Object.keys(this.tags)
     this.globalAttrNames = Object.keys(this.globalAttrs)
   }
-
-  static default = new Schema
 }
+
+const pick = (obj, keys) => Object.fromEntries(
+  keys
+    .filter(key => key in obj)
+    .map(key => [key, obj[key]])
+);
 
 export function elementName(doc: Text, tree: SyntaxNode | null | undefined, max = doc.length) {
   if (!tree) return ""
@@ -507,18 +547,12 @@ function htmlCompletionFor(schema: Schema, context: CompletionContext): Completi
 /// HTML tag completion. Opens and closes tags and attributes in a
 /// context-aware way.
 export function htmlCompletionSource(context: CompletionContext) {
-  return htmlCompletionFor(Schema.default, context)
+  return htmlCompletionFor(new Schema({}), context)
 }
 
 /// Create a completion source for HTML extended with additional tags
 /// or attributes.
-export function htmlCompletionSourceWith(config: {
-  /// Define extra tag names to complete.
-  extraTags?: Record<string, TagSpec>,
-  /// Add global attributes that are available on all tags.
-  extraGlobalAttributes?: Record<string, null | readonly string[]>
-}) {
-  let {extraTags, extraGlobalAttributes: extraAttrs} = config
-  let schema = extraAttrs || extraTags ? new Schema(extraTags, extraAttrs) : Schema.default
+export function htmlCompletionSourceWith(config: SchemaConfig) {
+  let schema = new Schema(config)
   return (context: CompletionContext) => htmlCompletionFor(schema, context)
 }

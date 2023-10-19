@@ -131,6 +131,12 @@ export function html(config: {
   extraTags?: Record<string, TagSpec>,
   /// Add additional completable attributes to all tags.
   extraGlobalAttributes?: Record<string, null | readonly string[]>,
+  /// Define list of allowed tags, must be a subset of default tags + extraTags
+  allowedTags?: string[],
+  /// Define list of allowed attributes per tag, must be a subset of default attributes for that tag.
+  /// Include 'global' for list of allowed global attributes, must be a subset of default global attrs + extraGlobalAttributes
+  /// All aria-* attributes are always allowed
+  allowedAttributes?: Record<string, string[]>
   /// Register additional languages to parse the content of specific
   /// tags. If given, `attrs` should be a function that, given an
   /// object representing the tag's attributes, returns `true` if this

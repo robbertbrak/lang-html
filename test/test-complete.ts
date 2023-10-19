@@ -1,15 +1,15 @@
 import {EditorState} from "@codemirror/state"
 import {CompletionContext, CompletionResult, CompletionSource} from "@codemirror/autocomplete"
-import {html} from "@codemirror/lang-html"
 import ist from "ist"
+import { html } from "@codemirror/lang-html";
 
-function get(doc: string, conf: {explicit?: boolean} = {}) {
+function get(doc: string, conf: {explicit?: boolean, config?: any} = {}) {
   let cur = doc.indexOf("|")
   doc = doc.slice(0, cur) + doc.slice(cur + 1)
   let state = EditorState.create({
     doc,
     selection: {anchor: cur},
-    extensions: [html()]
+    extensions: [html(conf.config || {})]
   })
   let result = state.languageDataAt<CompletionSource>("autocomplete", cur)[0](new CompletionContext(state, cur, !!conf.explicit))
   return result as CompletionResult | null
