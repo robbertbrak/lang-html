@@ -4,7 +4,8 @@
   "description": "HTML language support for the CodeMirror code editor",
   "scripts": {
     "test": "cm-runtests",
-    "prepare": "cm-buildhelper src/html.ts"
+    "prepare": "cm-buildhelper src/html.ts",
+    "prepack": "cm-buildhelper src/html.ts"
   },
   "keywords": [
     "editor",
